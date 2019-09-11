@@ -29,9 +29,9 @@ def get_dist(pkgname):
         return None
 
 
-version = '0.3.0a0'
+version = '0.5.0a0'
 sha = 'Unknown'
-package_name = os.getenv('TORCHVISION_PACKAGE_NAME', 'torchvision')
+package_name = 'torchvision'
 
 cwd = os.path.dirname(os.path.abspath(__file__))
 
@@ -40,12 +40,8 @@ try:
 except Exception:
     pass
 
-if os.getenv('TORCHVISION_BUILD_VERSION'):
-    assert os.getenv('TORCHVISION_BUILD_NUMBER') is not None
-    build_number = int(os.getenv('TORCHVISION_BUILD_NUMBER'))
-    version = os.getenv('TORCHVISION_BUILD_VERSION')
-    if build_number > 1:
-        version += '.post' + str(build_number)
+if os.getenv('BUILD_VERSION'):
+    version = os.getenv('BUILD_VERSION')
 elif sha != 'Unknown':
     version += '+' + sha[:7]
 print("Building wheel {}-{}".format(package_name, version))
@@ -65,12 +61,14 @@ write_version_file()
 
 readme = open('README.rst').read()
 
-pytorch_package_name = os.getenv('TORCHVISION_PYTORCH_DEPENDENCY_NAME', 'torch')
+pytorch_dep = 'torch'
+if os.getenv('PYTORCH_VERSION'):
+    pytorch_dep += "==" + os.getenv('PYTORCH_VERSION')
 
 requirements = [
     'numpy',
     'six',
-    pytorch_package_name,
+    pytorch_dep,
 ]
 
 pillow_ver = ' >= 4.1.1'
@@ -98,12 +96,21 @@ def get_extensions():
     source_models = [os.path.join(models_dir, s) for s in source_models]
     tests = test_file + source_models
 
+    custom_ops_sources = [os.path.join(extensions_dir, "custom_ops", "custom_ops.cpp"),
+                          os.path.join(extensions_dir, "cpu", "nms_cpu.cpp"),
+                          os.path.join(extensions_dir, "cpu", "ROIAlign_cpu.cpp"),
+                          os.path.join(extensions_dir, "cpu", "ROIPool_cpu.cpp")]
+    custom_ops_sources_cuda = [os.path.join(extensions_dir, "cuda", "nms_cuda.cu"),
+                               os.path.join(extensions_dir, "cuda", "ROIAlign_cuda.cu"),
+                               os.path.join(extensions_dir, "cuda", "ROIPool_cuda.cu")]
+
     define_macros = []
 
     extra_compile_args = {}
     if (torch.cuda.is_available() and CUDA_HOME is not None) or os.getenv('FORCE_CUDA', '0') == '1':
         extension = CUDAExtension
         sources += source_cuda
+        custom_ops_sources += custom_ops_sources_cuda
         define_macros += [('WITH_CUDA', None)]
         nvcc_flags = os.getenv('NVCC_FLAGS', '')
         if nvcc_flags == '':
@@ -114,6 +121,12 @@ def get_extensions():
             'cxx': ['-O0'],
             'nvcc': nvcc_flags,
         }
+
+    if sys.platform == 'win32':
+        define_macros += [('torchvision_EXPORTS', None)]
+
+        extra_compile_args.setdefault('cxx', [])
+        extra_compile_args['cxx'].append('/MP')
 
     sources = [os.path.join(extensions_dir, s) for s in sources]
 
@@ -134,7 +147,14 @@ def get_extensions():
             include_dirs=tests_include_dirs,
             define_macros=define_macros,
             extra_compile_args=extra_compile_args,
-        )
+        ),
+        extension(
+            "torchvision._custom_ops",
+            sources=custom_ops_sources,
+            include_dirs=include_dirs,
+            define_macros=define_macros,
+            extra_compile_args=extra_compile_args,
+        ),
     ]
 
     return ext_modules
@@ -175,5 +195,6 @@ setup(
         "scipy": ["scipy"],
     },
     ext_modules=get_extensions(),
-    cmdclass={'build_ext': torch.utils.cpp_extension.BuildExtension, 'clean': clean}
+    cmdclass={'build_ext': torch.utils.cpp_extension.BuildExtension,
+              'clean': clean}
 )

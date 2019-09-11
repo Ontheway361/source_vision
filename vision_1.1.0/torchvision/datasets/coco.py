@@ -1,8 +1,8 @@
+from .vision import VisionDataset
+from PIL import Image
 import os
 import os.path
-from PIL import Image
-from .vision import VisionDataset
-from pycocotools.coco import COCO
+
 
 class CocoCaptions(VisionDataset):
     """`MS Coco Captions <http://mscoco.org/dataset/#captions-challenge2015>`_ Dataset.
@@ -47,7 +47,7 @@ class CocoCaptions(VisionDataset):
 
     def __init__(self, root, annFile, transform=None, target_transform=None, transforms=None):
         super(CocoCaptions, self).__init__(root, transforms, transform, target_transform)
-
+        from pycocotools.coco import COCO
         self.coco = COCO(annFile)
         self.ids = list(sorted(self.coco.imgs.keys()))
 
@@ -93,9 +93,8 @@ class CocoDetection(VisionDataset):
     """
 
     def __init__(self, root, annFile, transform=None, target_transform=None, transforms=None):
-        
         super(CocoDetection, self).__init__(root, transforms, transform, target_transform)
-
+        from pycocotools.coco import COCO
         self.coco = COCO(annFile)
         self.ids = list(sorted(self.coco.imgs.keys()))
 

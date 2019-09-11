@@ -1,14 +1,8 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
-"""
-Created on 2019/07/04
-@author: lujie
-"""
-import torch
-from torch import nn
-import torch.nn.functional as F
 from collections import OrderedDict
+
+import torch
+import torch.nn.functional as F
+from torch import nn
 
 
 class FeaturePyramidNetwork(nn.Module):
@@ -16,7 +10,8 @@ class FeaturePyramidNetwork(nn.Module):
     Module that adds a FPN from on top of a set of feature maps. This is based on
     `"Feature Pyramid Network for Object Detection" <https://arxiv.org/abs/1612.03144>`_.
 
-    The feature maps are currently supposed to be in increasing depth order.
+    The feature maps are currently supposed to be in increasing depth
+    order.
 
     The input to the model is expected to be an OrderedDict[Tensor], containing
     the feature maps on top of which the FPN will be added.
